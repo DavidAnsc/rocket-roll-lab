@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rocket Roll Lab</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --ink:#1a1e24; --muted:#5d6672; --line:#dde2e8;
+  --accent:#2563eb; --world:#d97706; --imu:#0e9fb8; --warn:#b42318; --warnbg:#fdecea;
+  --chip:#eef1f5; --view:#10151b; --plotbg:#fbfcfd; --plotgrid:#e4e8ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c0f13; --panel:#141920; --ink:#e6e9ee; --muted:#98a2ae; --line:#252c35;
+    --accent:#60a5fa; --world:#f5a524; --imu:#22d3ee; --warn:#fca5a5; --warnbg:#3b1616;
+    --chip:#1c232c; --view:#0a0d11; --plotbg:#10151b; --plotgrid:#222a33;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c0f13; --panel:#141920; --ink:#e6e9ee; --muted:#98a2ae; --line:#252c35;
+  --accent:#60a5fa; --world:#f5a524; --imu:#22d3ee; --warn:#fca5a5; --warnbg:#3b1616;
+  --chip:#1c232c; --view:#0a0d11; --plotbg:#10151b; --plotgrid:#222a33;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--muted);margin:0 0 14px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.view{position:relative;background:var(--view);border-radius:10px;overflow:hidden;min-height:420px;height:56vh;touch-action:none}
+.view canvas{display:block;width:100%;height:100%}
+.legend{position:absolute;left:10px;top:10px;font-size:12px;color:#cfd6df;background:rgba(10,13,17,.7);padding:8px 10px;border-radius:8px;line-height:1.6}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:#8b95a1}
+.banner{position:absolute;left:10px;right:10px;bottom:30px;display:none;background:var(--warnbg);color:var(--warn);border:1px solid var(--warn);padding:8px 10px;border-radius:8px;font-size:13px}
+.sec{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px}
+.sec:first-child{margin-top:0}
+.seg{display:flex;gap:4px;background:var(--chip);padding:3px;border-radius:8px}
+.seg button{flex:1;border:0;background:transparent;color:var(--ink);padding:6px 4px;border-radius:6px;cursor:pointer;font:inherit;font-size:12px}
+.seg button.on{background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.15);font-weight:600}
+.presets{display:grid;gap:4px}
+.presets button{text-align:left;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 9px;border-radius:7px;cursor:pointer;font:inherit;font-size:13px}
+.presets button.on{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.note{background:var(--chip);border-radius:8px;padding:9px 10px;font-size:13px;margin-top:8px}
+.row{display:grid;grid-template-columns:62px 1fr 64px;align-items:center;gap:8px;margin:4px 0}
+.row label{font-size:12px;color:var(--muted)}
+.row output{font-variant-numeric:tabular-nums;text-align:right;font-size:12px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.btns button{border:1px solid var(--line);background:var(--chip);color:var(--ink);padding:6px 10px;border-radius:7px;cursor:pointer;font:inherit;font-size:12px}
+.lower{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px}
+@media (max-width:900px){.lower{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:right;font-size:13px}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;color:var(--muted);font-weight:600}
+.imu{color:var(--imu)} .world{color:var(--world)}
+.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:var(--chip);border-radius:8px;padding:10px;margin-top:10px;overflow-x:auto;white-space:nowrap}
+.big{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.big div{flex:1;min-width:120px;background:var(--chip);border-radius:8px;padding:8px 10px}
+.big b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.big span{font-size:11px;color:var(--muted)}
+#plot{width:100%;height:220px;display:block}
+.concepts{margin-top:14px}
+.concepts ul{margin:6px 0 0;padding-left:18px}
+.concepts li{margin:4px 0}
+.tabs{display:flex;gap:6px;margin:0 0 12px}
+.tabs button{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer;font:inherit;font-size:13px}
+.tabs button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.cond{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--line);border-radius:7px;margin:4px 0;cursor:pointer;font-size:13px}
+.cond input{margin-top:3px;accent-color:var(--accent)}
+.cond small{display:block;color:var(--muted);font-size:12px}
+.cond.dis{opacity:.45}
+#tab2 td:last-child{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Rocket Roll Lab</h1>
+  <div class="tabs" id="tabs"><button data-t="1" class="on">1 · Gyro vs world roll</button><button data-t="2">2 · Amber line builder</button></div>
+<section id="tab1">
+  <p class="sub">The IMU gyro measures how fast the rocket turns about its own axes. World roll is an angle computed against a world reference. Run the presets and compare the two.</p>
+
+  <div class="grid">
+    <div>
+      <div class="view" id="view">
+        <div class="legend">
+          <div><i style="background:#ef4444"></i>Body x: nose (roll axis, gyro p)</div>
+          <div><i style="background:#22c55e"></i>Body y: green fin (gyro q)</div>
+          <div><i style="background:#3b82f6"></i>Body z: blue fin (gyro r)</div>
+          <div><i style="background:#f5a524"></i>World "zero-roll" fin direction + roll arc</div>
+          <div><i style="background:#8b95a1"></i>World axes N / E / Up, nose trail</div>
+        </div>
+        <div class="banner" id="banner"></div>
+        <div class="hint">drag to orbit · scroll / pinch to zoom</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">World-angle convention</div>
+      <div class="seg" id="conv">
+        <button data-c="air" class="on">Horizon-referenced<br><small>aircraft ZYX</small></button>
+        <button data-c="vert">Vertical-referenced<br><small>launch frame</small></button>
+      </div>
+
+      <div class="sec">Scenarios</div>
+      <div class="presets" id="presets"></div>
+      <div class="note" id="pnote"></div>
+
+      <div class="sec">Gyro rates (what the IMU outputs)</div>
+      <div class="row"><label>p roll</label><input type="range" id="sp" min="-90" max="90" step="1" value="0"><output id="op">0</output></div>
+      <div class="row"><label>q pitch</label><input type="range" id="sq" min="-90" max="90" step="1" value="0"><output id="oq">0</output></div>
+      <div class="row"><label>r yaw</label><input type="range" id="sr" min="-90" max="90" step="1" value="0"><output id="or">0</output></div>
+
+      <div class="sec">Start attitude (Free fly)</div>
+      <div class="row"><label>Pitch θ₀</label><input type="range" id="s0t" min="-90" max="90" step="1" value="45"><output id="o0t">45°</output></div>
+      <div class="row"><label>Heading ψ₀</label><input type="range" id="s0p" min="-180" max="180" step="1" value="0"><output id="o0p">0°</output></div>
+
+      <div class="sec">Playback</div>
+      <div class="btns">
+        <button id="play">Pause</button>
+        <button id="reset">Reset</button>
+        <button id="zero">Zero rates</button>
+        <button id="spd">Speed 1×</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lower">
+    <div class="card">
+      <div class="sec">Side by side</div>
+      <table>
+        <thead><tr><th>Axis</th><th class="imu">Gyro rate °/s</th><th class="imu">∫ gyro °</th><th class="world">World angle °</th><th class="world">World rate °/s</th></tr></thead>
+        <tbody>
+          <tr><td id="n0">Roll</td><td id="gp"></td><td id="ip"></td><td id="wph"></td><td id="dph"></td></tr>
+          <tr><td id="n1">Pitch</td><td id="gq"></td><td id="iq"></td><td id="wth"></td><td id="dth"></td></tr>
+          <tr><td id="n2">Yaw</td><td id="gr"></td><td id="ir"></td><td id="wps"></td><td id="dps"></td></tr>
+        </tbody>
+      </table>
+      <div class="formula" id="formula"></div>
+      <div class="big">
+        <div><span>World roll − ∫p (gap)</span><b id="gap">0°</b></div>
+        <div><span>Leak from q, r into roll rate</span><b id="leak">0°/s</b></div>
+        <div><span>tan θ (leak gain)</span><b id="gain">0</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec">Last 20 s</div>
+      <canvas id="plot"></canvas>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">
+        <span class="world">━ World roll φ</span> &nbsp; <span class="imu">━ IMU-integrated roll ∫p</span> &nbsp; <span>┅ World yaw ψ</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card concepts">
+    <div class="sec">Core points</div>
+    <ul>
+      <li><b>The gyro has no horizon.</b> p, q, r are rotation rates about the rocket's own nose and fin axes. They read the same no matter where the rocket points.</li>
+      <li><b>World roll is computed, not measured.</b> It is the angle between the green fin and a reference direction (amber) that the world defines. In the horizon convention that reference is "horizontal and perpendicular to the nose". In the vertical convention it is "perpendicular to both the nose and North" (East when the rocket sits on the pad).</li>
+      <li><b>The two match only when pitch and yaw rates are zero, or when θ = 0.</b> Otherwise q and r feed into world roll rate through the tan θ term. That is why ∫p drifts away from φ.</li>
+      <li><b>At θ = ±90° world roll is undefined.</b> Horizon convention: nose straight up (on the pad). Vertical convention: nose pointing exactly North or South (the launch frame's crossrange axis). A rocket pitching over toward East never reaches it. The singularity moves when you change convention. The gyro readings do not change.</li>
+      <li><b>For flight software:</b> integrate a quaternion from p, q, r. Never integrate p and call it roll. Convert to Euler angles only for display, logging and control targets, and use a convention whose singularity is outside the flight envelope. For the boost phase that is vertical-referenced. For a pitched-over trajectory near horizontal it is horizon-referenced.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="tab2" hidden>
+  <p class="sub">Every amber line comes from a short list of conditions. Switch them on and off to see which fin directions remain allowed. Move the nose to see where the rule breaks down.</p>
+  <div class="grid">
+    <div>
+      <div class="view" id="bview">
+        <div class="legend">
+          <div><i style="background:#ef4444"></i>Nose direction</div>
+          <div><i style="background:#a855f7"></i>World reference axis</div>
+          <div><i style="background:rgba(239,68,68,.55)"></i>Disk: all directions at 90° to nose (cond. 1)</div>
+          <div><i style="background:rgba(168,85,247,.6)"></i>Disk: all directions at 90° to axis (cond. 2)</div>
+          <div><i style="background:#f5a524"></i>Amber: fin directions still allowed</div>
+        </div>
+        <div class="banner" id="bbanner"></div>
+        <div class="hint">drag to orbit · scroll / pinch to zoom</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">World reference axis</div>
+      <div class="seg" id="baxis">
+        <button data-a="up" class="on">Up<br><small>horizon conv.</small></button>
+        <button data-a="north">North<br><small>vertical conv.</small></button>
+        <button data-a="east">East</button>
+        <button data-a="custom">Custom</button>
+      </div>
+      <div id="bcust" hidden>
+        <div class="row"><label>Axis az</label><input type="range" id="bcaz" min="-180" max="180" value="30"><output id="ocaz">30°</output></div>
+        <div class="row"><label>Axis el</label><input type="range" id="bcel" min="-90" max="90" value="20"><output id="ocel">20°</output></div>
+      </div>
+
+      <div class="sec">Conditions</div>
+      <label class="cond"><input type="checkbox" id="c1" checked><span><b>1 · At 90° to the nose</b><small>A fin direction must be perpendicular to the body.</small></span></label>
+      <label class="cond"><input type="checkbox" id="c2" checked><span><b>2 · At 90° to the world axis</b><small>The world's input. For Up this means "horizontal".</small></span></label>
+      <label class="cond"><input type="checkbox" id="c3" checked><span><b>3 · Unit length</b><small>Off: shows the raw cross product before normalizing.</small></span></label>
+      <label class="cond" id="c4w"><input type="checkbox" id="c4" checked><span><b>4 · Sign rule</b><small id="c4t">Pick one of the two opposite candidates.</small></span></label>
+
+      <div class="sec">Build it up step by step</div>
+      <div class="btns" id="bstages">
+        <button data-s="0">None</button><button data-s="1">1</button><button data-s="2">1+2</button><button data-s="3">1+2+3</button><button data-s="4">All</button>
+      </div>
+      <div class="big"><div><span>Allowed amber directions</span><b id="bcount">1</b></div></div>
+      <div class="note" id="bnote"></div>
+
+      <div class="sec">Nose motion</div>
+      <div class="seg" id="bmode">
+        <button data-m="manual">Manual</button>
+        <button data-m="circle">Circle</button>
+        <button data-m="pass" class="on">Pass-by</button>
+      </div>
+      <div id="m-manual" hidden>
+        <div class="row"><label>Elevation</label><input type="range" id="bel" min="-90" max="90" step="0.5" value="60"><output id="obel">60°</output></div>
+        <div class="row"><label>Heading</label><input type="range" id="bhd" min="-180" max="180" step="0.5" value="0"><output id="obhd">0°</output></div>
+      </div>
+      <div id="m-circle" hidden>
+        <div class="row"><label>Centre off axis</label><input type="range" id="boff" min="0" max="60" value="15"><output id="oboff">15°</output></div>
+        <div class="row"><label>Radius</label><input type="range" id="brad" min="2" max="40" value="12"><output id="obrad">12°</output></div>
+        <div class="row"><label>Period</label><input type="range" id="bcper" min="1" max="12" value="4"><output id="obcper">4 s</output></div>
+      </div>
+      <div id="m-pass">
+        <div class="row"><label>Miss distance</label><input type="range" id="bmiss" min="0" max="40" step="0.5" value="6"><output id="obmiss">6°</output></div>
+        <div class="row"><label>Sweep ±</label><input type="range" id="bsweep" min="10" max="80" value="40"><output id="obsweep">40°</output></div>
+        <div class="row"><label>Period</label><input type="range" id="bpper" min="2" max="16" value="6"><output id="obpper">6 s</output></div>
+      </div>
+
+      <div class="sec">Display</div>
+      <label class="cond"><input type="checkbox" id="bfield"><span><b>Field: amber line for every nose direction</b><small>One short tick per nose direction on the sphere, using conditions 1, 2 and 4. Red where the rule is weakly defined.</small></span></label>
+      <label class="cond"><input type="checkbox" id="btrail" checked><span><b>Trails</b><small>Nose tip (red) and amber tip (amber) over the last few seconds.</small></span></label>
+      <div class="btns" style="margin-top:6px"><button id="bplay">Pause</button></div>
+    </div>
+  </div>
+
+  <div class="lower">
+    <div class="card">
+      <div class="sec">Readouts</div>
+      <table>
+        <tbody>
+          <tr><td>Angle between nose and axis</td><td id="r-ang"></td></tr>
+          <tr><td>Raw length |nose × axis| = sin(angle)</td><td id="r-len"></td></tr>
+          <tr><td>Magnification 1 / |nose × axis|</td><td id="r-mag"></td></tr>
+          <tr><td>Nose moving at</td><td id="r-nr"></td></tr>
+          <tr><td>Amber line turning at</td><td id="r-ar"></td></tr>
+          <tr><td>Measured ratio (amber ÷ nose)</td><td id="r-ratio"></td></tr>
+          <tr><td>Amber direction (heading, elevation)</td><td id="r-dir"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="sec">Last 12 s</div>
+      <canvas id="bplot" style="width:100%;height:220px;display:block"></canvas>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">
+        <span class="world">━ Measured amber ÷ nose rate</span> &nbsp; <span style="color:#a855f7">┅ Upper limit 1 / sin(angle to axis)</span> &nbsp; (clipped at 20)
+      </div>
+    </div>
+  </div>
+
+  <div class="card concepts">
+    <div class="sec">What each condition does</div>
+    <ul>
+      <li><b>Condition 1 alone leaves a full circle.</b> Any roll is physically possible. On its own, the body gives no preferred fin direction.</li>
+      <li><b>Condition 2 is the only input from the world.</b> It turns "a fin direction" into "the zero-roll fin direction". Change the axis and you change what zero roll means.</li>
+      <li><b>1 + 2 leave one line,</b> perpendicular to both the nose and the axis. It depends only on where the nose sits <i>around</i> the axis, never on how far from it. Moving the nose straight toward the axis does not turn the line. Moving it sideways around the axis does.</li>
+      <li><b>Condition 3 hides how weakly the line is defined.</b> The raw cross product has length sin(angle to axis). Normalizing divides by that, so near the axis small sideways nose motions turn the amber line by large angles.</li>
+      <li><b>Condition 4 turns the line into a direction.</b> Switch on the field view: the ticks circle around the two points where the nose lines up with ±axis. Every axis choice has two such points. You can move them but not remove them.</li>
+      <li><b>Design rule:</b> choose the axis so that both bad points sit where the nose never goes. During boost that means not Up.</li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<script>/*THREE*/</script>
+<script>
+(function(){
+const D2R=Math.PI/180, R2D=180/Math.PI;
+const wrap=a=>((a+180)%360+360)%360-180;
+// ---------- quaternion / matrix math (NED world, body x=nose, y=green fin, z=blue fin) ----------
+function qmul(a,b){return [
+  a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3],
+  a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],
+  a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1],
+  a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];}
+function qnorm(q){const n=Math.hypot(q[0],q[1],q[2],q[3]);return q.map(v=>v/n);}
+function qaa(ax,ang){const s=Math.sin(ang/2);return [Math.cos(ang/2),ax[0]*s,ax[1]*s,ax[2]*s];}
+function qToR(q){const [w,x,y,z]=q;return [
+  [1-2*(y*y+z*z),2*(x*y-w*z),2*(x*z+w*y)],
+  [2*(x*y+w*z),1-2*(x*x+z*z),2*(y*z-w*x)],
+  [2*(x*z-w*y),2*(y*z+w*x),1-2*(x*x+y*y)]];}
+function qFromEuler(psd,thd,phd){
+  return qnorm(qmul(qmul(qaa([0,0,1],psd*D2R),qaa([0,1,0],thd*D2R)),qaa([1,0,0],phd*D2R)));}
+const mT=A=>[[A[0][0],A[1][0],A[2][0]],[A[0][1],A[1][1],A[2][1]],[A[0][2],A[1][2],A[2][2]]];
+const mM=(A,B)=>A.map(r=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j]));
+const mV=(A,v)=>A.map(r=>r[0]*v[0]+r[1]*v[1]+r[2]*v[2]);
+const col=(A,j)=>[A[0][j],A[1][j],A[2][j]];
+// Vertical-referenced frame: x'=Up, y'=East, z'=North (expressed in NED)
+const VF=[[0,0,1],[0,1,0],[-1,0,0]];
+
+function euler(R,conv){
+  const Rc= conv==='vert'? mM(mT(VF),R) : R;
+  const s=-Rc[2][0];
+  const th=Math.asin(Math.max(-1,Math.min(1,s)));
+  let ph,ps,locked=false;
+  if(Math.abs(Rc[2][0])>0.9999995){locked=true;ph=0;ps=Math.atan2(-Rc[0][1],Rc[1][1]);}
+  else{ph=Math.atan2(Rc[2][1],Rc[2][2]);ps=Math.atan2(Rc[1][0],Rc[0][0]);}
+  let ref=[-Math.sin(ps),Math.cos(ps),0];
+  if(conv==='vert') ref=mV(VF,ref);
+  return {ps:ps*R2D,th:th*R2D,ph:ph*R2D,locked,ref};
+}
+function rodrigues(v,k,a){ // rotate v about unit k by a (rad)
+  const c=Math.cos(a),s=Math.sin(a),d=k[0]*v[0]+k[1]*v[1]+k[2]*v[2];
+  const x=[k[1]*v[2]-k[2]*v[1],k[2]*v[0]-k[0]*v[2],k[0]*v[1]-k[1]*v[0]];
+  return [0,1,2].map(i=>v[i]*c+x[i]*s+k[i]*d*(1-c));
+}
+
+// ---------- scenarios ----------
+const PRESETS=[
+ {id:'level',name:'1 · Level flight, pure roll',init:[0,0,0],rates:()=>[45,0,0],
+  note:'Nose on the horizon, only the roll gyro (p) is nonzero. World roll and ∫p stay identical. Most people build their intuition on this case, and it is the only case where they always agree.'},
+ {id:'tilt',name:'2 · Tilted 60°, pure roll',init:[30,60,0],rates:()=>[45,0,0],
+  note:'Spinning about its own nose does not move where the nose points, so pitch and yaw stay fixed and world roll still equals ∫p. Agreement holds because q = r = 0, not because of the tilt angle.'},
+ {id:'leak',name:'3 · Tilted, body yaw only (p = 0)',init:[0,50,0],rates:()=>[0,0,20],
+  note:'The roll gyro reads exactly 0 for the whole run. World roll still swings, because the r term times tan θ feeds directly into world roll rate. Watch the amber arc open while the cyan trace stays flat at 0.'},
+ {id:'cone',name:'4 · Coning wobble (p = 0)',init:[0,70,0],rates:t=>{const w=2*Math.PI/3,A=25;return [0,A*Math.cos(w*t),A*Math.sin(w*t)];},
+  note:'q and r oscillate 90° out of phase, so the nose traces a cone, as in a wobbling rocket on ascent. The roll gyro never sees any roll, but world roll and yaw accumulate a net drift every cycle. This is why integrating gyros axis by axis fails and a quaternion integrator is needed.'},
+ {id:'pad',name:'5 · On the pad, pure roll',init:[0,90,0],rates:()=>[45,0,0],
+  note:'Nose straight up. In the horizon convention θ = 90°, so roll is undefined: the software forces φ = 0 and puts the spin into yaw ψ. The gyro reports a clean 45 °/s roll. Switch to the vertical convention and world roll matches ∫p again.'},
+ {id:'near',name:'6 · 3° off vertical, tiny yaw rate',init:[0,87,0],rates:()=>[0,0,3],
+  note:'A 3 °/s body yaw rate while 3° from vertical. tan θ ≈ 19, so world roll and yaw rates reach roughly 60 °/s or more while the rocket barely moves. Switch to the vertical convention and the numbers settle down.'},
+ {id:'free',name:'Free fly (your sliders)',init:null,rates:null,
+  note:'Set any combination of p, q, r and a start attitude. Try a small q with a large p at θ₀ = 80°, then switch conventions.'}
+];
+
+// ---------- state ----------
+let conv='air', preset=PRESETS[0], playing=true, speed=1;
+const st={q:[1,0,0,0],t:0,ip:0,iq:0,ir:0,rates:[0,0,0],hist:[],trail:[],lastH:-1};
+const $=id=>document.getElementById(id);
+const sl={p:$('sp'),q:$('sq'),r:$('sr')};
+
+function reset(){
+  let init=preset.init;
+  if(!init) init=[+$('s0p').value,+$('s0t').value,0];
+  st.q=qFromEuler(init[0],init[1],init[2]);
+  st.t=0;st.ip=st.iq=st.ir=0;st.hist=[];st.trail=[];st.lastH=-1;
+  if(preset.rates) setSliders(preset.rates(0));
+  pushHist(true);
+}
+function setSliders(r){['p','q','r'].forEach((k,i)=>{sl[k].value=r[i];$('o'+k).textContent=r[i].toFixed(0);});}
+function curRates(){return preset.rates?preset.rates(st.t):[+sl.p.value,+sl.q.value,+sl.r.value];}
+
+function step(dt){
+  const r=curRates();st.rates=r;
+  const w=r.map(v=>v*D2R),m=Math.hypot(w[0],w[1],w[2]);
+  if(m>1e-12) st.q=qnorm(qmul(st.q,qaa([w[0]/m,w[1]/m,w[2]/m],m*dt)));
+  st.ip+=r[0]*dt;st.iq+=r[1]*dt;st.ir+=r[2]*dt;st.t+=dt;
+  pushHist(false);
+}
+function pushHist(force){
+  if(!force && st.t-st.lastH<1/30) return;
+  st.lastH=st.t;
+  const e=euler(qToR(st.q),conv);
+  st.hist.push({t:st.t,ph:e.ph,ps:e.ps,ip:wrap(st.ip)});
+  while(st.hist.length && st.hist[0].t<st.t-20) st.hist.shift();
+  const R=qToR(st.q);const n=col(R,0);
+  st.trail.push([n[0]*2.4,n[1]*2.4,n[2]*2.4]);
+  if(st.trail.length>500) st.trail.shift();
+}
+
+// ---------- UI wiring ----------
+const pbox=$('presets');
+PRESETS.forEach(p=>{const b=document.createElement('button');b.textContent=p.name;b.onclick=()=>selectPreset(p);p.btn=b;pbox.appendChild(b);});
+function selectPreset(p,keepAttitude){
+  preset=p;PRESETS.forEach(x=>x.btn.classList.toggle('on',x===p));
+  $('pnote').textContent=p.note;
+  if(!keepAttitude) reset();
+}
+['p','q','r'].forEach(k=>sl[k].addEventListener('input',()=>{
+  $('o'+k).textContent=sl[k].value;
+  if(preset.id!=='free'){ selectPreset(PRESETS[PRESETS.length-1],true); }
+}));
+['s0t','s0p'].forEach(id=>$(id).addEventListener('input',()=>{
+  $('o0'+id.slice(2)).textContent=$(id).value+'°';
+  if(preset.id!=='free') selectPreset(PRESETS[PRESETS.length-1],true);
+  reset();
+}));
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play';};
+$('reset').onclick=reset;
+$('zero').onclick=()=>{if(preset.id!=='free')selectPreset(PRESETS[PRESETS.length-1],true);setSliders([0,0,0]);};
+const speeds=[0.25,0.5,1,2];
+$('spd').onclick=()=>{speed=speeds[(speeds.indexOf(speed)+1)%speeds.length];$('spd').textContent='Speed '+speed+'×';};
+document.querySelectorAll('#conv button').forEach(b=>b.onclick=()=>{
+  conv=b.dataset.c;document.querySelectorAll('#conv button').forEach(x=>x.classList.toggle('on',x===b));
+  // recompute history in new convention is not possible without stored attitudes; clear it
+  st.hist=[];pushHist(true);
+  const names=conv==='air'?['Roll φ','Pitch θ','Yaw ψ']:['Roll φ','Tilt θ (about E)','Tilt ψ (about N)'];
+  $('n0').textContent=names[0];$('n1').textContent=names[1];$('n2').textContent=names[2];
+});
+
+// ---------- 3D scene ----------
+const view=$('view');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+view.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--view').trim()||'#10151b');
+const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
+scene.add(new THREE.HemisphereLight(0xffffff,0x334455,0.9));
+const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(5,10,7);scene.add(dl);
+const grid=new THREE.GridHelper(16,16,0x3a4552,0x252d36);grid.position.y=-3.4;scene.add(grid);
+
+const T=v=>new THREE.Vector3(v[1],-v[2],-v[0]); // NED -> three (x=E, y=Up, z=S)
+function label(text,color,scale){
+  const c=document.createElement('canvas');c.width=256;c.height=96;const g=c.getContext('2d');
+  g.font='600 52px system-ui,sans-serif';g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';g.fillText(text,128,48);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true}));
+  s.scale.set(1.2*(scale||1),0.45*(scale||1),1);s.renderOrder=10;return s;
+}
+function dashedLine(a,b,color){
+  const g=new THREE.BufferGeometry().setFromPoints([a,b]);
+  const l=new THREE.Line(g,new THREE.LineDashedMaterial({color,dashSize:0.25,gapSize:0.18,transparent:true,opacity:0.7}));
+  l.computeLineDistances();return l;
+}
+// world axes
+[[[1,0,0],'N'],[[0,1,0],'E'],[[0,0,-1],'Up']].forEach(([v,n])=>{
+  const end=T(v.map(x=>x*5.2)), start=n==='Up'?T([0,0,3.4]):T(v.map(x=>-x*5.2));
+  scene.add(dashedLine(start,end,0x8b95a1));
+  const lb=label(n,'#aab4bf',0.8);lb.position.copy(T(v.map(x=>x*5.7)));scene.add(lb);
+});
+
+// rocket (built in body coords: x = nose)
+const rocket=new THREE.Group();rocket.matrixAutoUpdate=false;scene.add(rocket);
+const bodyMat=new THREE.MeshStandardMaterial({color:0xd9dde3,metalness:0.2,roughness:0.5});
+const cyl=new THREE.CylinderGeometry(0.28,0.28,3.2,32);cyl.rotateZ(-Math.PI/2);
+rocket.add(new THREE.Mesh(cyl,bodyMat));
+const cone=new THREE.ConeGeometry(0.28,0.8,32);cone.rotateZ(-Math.PI/2);cone.translate(2.0,0,0);
+rocket.add(new THREE.Mesh(cone,new THREE.MeshStandardMaterial({color:0x2b3138,roughness:0.6})));
+function fin(dir,color){
+  const g=new THREE.BoxGeometry(0.8,0.6,0.05);const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,roughness:0.5}));
+  m.position.set(-1.2,0,0);
+  if(dir==='+y'){m.position.y=0.58;}
+  if(dir==='-y'){m.position.y=-0.58;}
+  if(dir==='+z'){m.rotation.x=Math.PI/2;m.position.z=0.58;}
+  if(dir==='-z'){m.rotation.x=Math.PI/2;m.position.z=-0.58;}
+  rocket.add(m);
+}
+fin('+y',0x22c55e);fin('-y',0x6b7480);fin('+z',0x3b82f6);fin('-z',0x6b7480);
+const ax=(d,c,l)=>{const a=new THREE.ArrowHelper(new THREE.Vector3(...d),new THREE.Vector3(0,0,0),l,c,0.25,0.14);rocket.add(a);};
+ax([1,0,0],0xef4444,3.3);ax([0,1,0],0x22c55e,1.9);ax([0,0,1],0x3b82f6,1.9);
+const lx=label('x nose','#ef4444',0.8);lx.position.set(3.7,0,0);rocket.add(lx);
+
+// roll reference visuals (world coords)
+const finLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0x22c55e}));
+const refLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineDashedMaterial({color:0xf5a524,dashSize:0.15,gapSize:0.1}));
+const arcGeo=new THREE.BufferGeometry().setFromPoints(new Array(49).fill(0).map(()=>new THREE.Vector3()));
+const arc=new THREE.Line(arcGeo,new THREE.LineBasicMaterial({color:0xf5a524}));
+const phiLabel=label('φ','#f5a524',0.7);
+[finLine,refLine,arc,phiLabel].forEach(o=>{o.renderOrder=5;if(o.material)o.material.depthTest=false;scene.add(o);});
+const trailGeo=new THREE.BufferGeometry();trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(500*3),3));
+const trail=new THREE.Line(trailGeo,new THREE.LineBasicMaterial({color:0x9aa4b0,transparent:true,opacity:0.6}));scene.add(trail);
+
+function updateScene(){
+  const R=qToR(st.q);
+  const bx=T(col(R,0)),by=T(col(R,1)),bz=T(col(R,2));
+  rocket.matrix.makeBasis(bx,by,bz);rocket.matrixWorldNeedsUpdate=true;
+  const e=euler(R,conv);
+  const n=col(R,0),f=col(R,1);
+  const c=n.map(v=>v*0.3);
+  const L=1.7;
+  finLine.geometry.setFromPoints([T(c),T(c.map((v,i)=>v+f[i]*L))]);
+  const show=!e.locked;
+  refLine.visible=arc.visible=phiLabel.visible=show;
+  if(show){
+    refLine.geometry.setFromPoints([T(c),T(c.map((v,i)=>v+e.ref[i]*L))]);refLine.computeLineDistances();
+    const pts=[];for(let i=0;i<=48;i++){const d=rodrigues(e.ref,n,e.ph*D2R*i/48);pts.push(T(c.map((v,k)=>v+d[k]*1.25)));}
+    arc.geometry.setFromPoints(pts);
+    const mid=rodrigues(e.ref,n,e.ph*D2R/2);phiLabel.position.copy(T(c.map((v,k)=>v+mid[k]*1.55)));
+  }
+  const pos=trailGeo.attributes.position.array;
+  st.trail.forEach((p,i)=>{const v=T(p);pos[i*3]=v.x;pos[i*3+1]=v.y;pos[i*3+2]=v.z;});
+  trailGeo.setDrawRange(0,st.trail.length);trailGeo.attributes.position.needsUpdate=true;
+  return e;
+}
+
+// camera orbit
+let az=0.75,el=0.32,dist=12;
+function placeCam(){camera.position.set(dist*Math.cos(el)*Math.sin(az),dist*Math.sin(el),dist*Math.cos(el)*Math.cos(az));camera.lookAt(0,0.3,0);}
+const ptrs=new Map();let pinch0=0;
+view.addEventListener('pointerdown',e=>{view.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);});
+view.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId);
+  if(ptrs.size===1){az-=(e.clientX-p[0])*0.008;el=Math.max(-1.4,Math.min(1.4,el+(e.clientY-p[1])*0.008));}
+  ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch0)dist=Math.max(5,Math.min(30,dist*pinch0/d));pinch0=d;}
+});
+const up=e=>{ptrs.delete(e.pointerId);pinch0=0;};
+view.addEventListener('pointerup',up);view.addEventListener('pointercancel',up);
+view.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(5,Math.min(30,dist*(1+e.deltaY*0.001)));},{passive:false});
+function resize(){const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(view);
+
+// ---------- readouts ----------
+const f1=(v,d=1)=>(Math.abs(v)<0.05&&d===1?0:v).toFixed(d);
+function readouts(e){
+  const [p,q,r]=st.rates;
+  const ph=e.ph*D2R,th=e.th*D2R,ct=Math.cos(th);
+  const coup=q*Math.sin(ph)+r*Math.cos(ph);
+  const sing=Math.abs(ct)<0.01;
+  const phd=sing?NaN:p+coup*Math.tan(th), thd=q*Math.cos(ph)-r*Math.sin(ph), psd=sing?NaN:coup/ct;
+  const fmt=v=>isNaN(v)?'undefined':f1(v);
+  $('gp').textContent=f1(p);$('gq').textContent=f1(q);$('gr').textContent=f1(r);
+  $('ip').textContent=f1(wrap(st.ip));$('iq').textContent=f1(wrap(st.iq));$('ir').textContent=f1(wrap(st.ir));
+  $('wph').textContent=e.locked?'undefined':f1(e.ph);$('wth').textContent=f1(e.th);$('wps').textContent=f1(e.ps);
+  $('dph').textContent=fmt(phd);$('dth').textContent=f1(thd);$('dps').textContent=fmt(psd);
+  const leak=sing?NaN:coup*Math.tan(th);
+  $('formula').innerHTML='φ̇ = p + (q·sin φ + r·cos φ)·tan θ<br>'+
+    (sing?'tan θ → ∞ : roll rate undefined at this attitude':
+    `${fmt(phd)} = <span class="imu">${f1(p)}</span> + (${f1(q)}·${Math.sin(ph).toFixed(2)} + ${f1(r)}·${Math.cos(ph).toFixed(2)})·${Math.tan(th).toFixed(2)}`);
+  $('gap').textContent=e.locked?'—':f1(wrap(e.ph-st.ip))+'°';
+  $('leak').textContent=isNaN(leak)?'∞':f1(leak)+'°/s';
+  $('gain').textContent=sing?'∞':Math.tan(th).toFixed(2);
+  const b=$('banner');const off=90-Math.abs(e.th);
+  if(e.locked){b.style.display='block';b.textContent='At the singularity of this convention (θ = ±90°). World roll is undefined: the software forces φ = 0 and puts all rotation about the nose into ψ. The gyro is unaffected.';}
+  else if(off<15){b.style.display='block';b.textContent=`θ = ${e.th.toFixed(1)}°, ${off.toFixed(1)}° from this convention's singularity. tan θ = ${Math.tan(th).toFixed(1)}: small pitch or yaw rates show up as large world roll and yaw rates.`;}
+  else b.style.display='none';
+}
+
+// ---------- plot ----------
+const pc=$('plot');
+function drawPlot(){
+  const dpr=Math.min(window.devicePixelRatio,2),W=pc.clientWidth,H=pc.clientHeight;
+  if(pc.width!==W*dpr||pc.height!==H*dpr){pc.width=W*dpr;pc.height=H*dpr;}
+  const g=pc.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  const cs=getComputedStyle(document.documentElement),V=n=>cs.getPropertyValue(n).trim();
+  g.fillStyle=V('--plotbg');g.fillRect(0,0,W,H);
+  const L=36,Rm=8,Tp=8,B=20,pw=W-L-Rm,ph=H-Tp-B;
+  const y=v=>Tp+ph*(1-(v+180)/360);
+  const t1=Math.max(st.t,20),t0=t1-20,x=t=>L+pw*(t-t0)/20;
+  g.strokeStyle=V('--plotgrid');g.fillStyle=V('--muted');g.font='11px system-ui';g.lineWidth=1;g.textAlign='right';g.textBaseline='middle';
+  [-180,-90,0,90,180].forEach(v=>{g.beginPath();g.moveTo(L,y(v));g.lineTo(W-Rm,y(v));g.stroke();g.fillText(v+'°',L-4,y(v));});
+  g.textAlign='center';g.textBaseline='top';
+  for(let s=Math.ceil(t0/5)*5;s<=t1;s+=5)g.fillText(s+'s',x(s),H-B+4);
+  const series=(key,color,dash,w)=>{
+    g.strokeStyle=color;g.lineWidth=w;g.setLineDash(dash);g.beginPath();let prev=null;
+    st.hist.forEach(h=>{const v=h[key];if(prev!==null&&Math.abs(v-prev)<180)g.lineTo(x(h.t),y(v));else g.moveTo(x(h.t),y(v));prev=v;});
+    g.stroke();g.setLineDash([]);
+  };
+  series('ps',V('--muted'),[4,4],1);
+  series('ip',V('--imu'),[],2.5);
+  series('ph',V('--world'),[],2);
+}
+
+// ---------- loop ----------
+selectPreset(PRESETS[0]);
+let last=performance.now();
+function frame(now){
+  let dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(playing){let sim=dt*speed;const h=1/240;while(sim>1e-9){const d=Math.min(h,sim);step(d);sim-=d;}
+    if(preset.rates)setSliders(st.rates.map(v=>Math.round(v)));}
+  placeCam();const e=updateScene();readouts(e);drawPlot();
+  renderer.render(scene,camera);requestAnimationFrame(frame);
+}
+resize();requestAnimationFrame(frame);
+})();
+</script>
+<script>
+// ---------- tabs ----------
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.getElementById('tab1').hidden=b.dataset.t!=='1';
+  document.getElementById('tab2').hidden=b.dataset.t!=='2';
+});
+</script>
+<script>
+(function(){
+const D2R=Math.PI/180,R2D=180/Math.PI;
+const $=id=>document.getElementById(id);
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const scl=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const nrm=a=>{const l=len(a);return l>1e-12?scl(a,1/l):[0,0,0];};
+const ang=(a,b)=>Math.acos(Math.max(-1,Math.min(1,dot(a,b))));
+function perp(m){const t=Math.abs(m[2])<0.9?[0,0,1]:[1,0,0];return nrm(cross(m,t));}
+const T=v=>new THREE.Vector3(v[1],-v[2],-v[0]); // NED -> three
+const UP=[0,0,-1],NORTH=[1,0,0],EAST=[0,1,0];
+const R=3;
+
+// ---------- state ----------
+let axisKey='up',mode='pass',playing=true,t=0;
+const cust={az:30,el:20};
+const C={1:true,2:true,3:true,4:true};
+const P={el:60,hd:0,off:15,rad:12,cper:4,miss:6,sweep:40,pper:6};
+let showField=false,showTrails=true;
+
+function axisInfo(){
+  if(axisKey==='up')return{a:UP,name:'Up',order:1,b1:NORTH,sign:'Picks the one on the right of the nose\'s heading.'};
+  if(axisKey==='north')return{a:NORTH,name:'North',order:-1,b1:UP,sign:'Picks the one that points East when the nose is Up.'};
+  if(axisKey==='east')return{a:EAST,name:'East',order:1,b1:UP,sign:'Picks the one along nose × East.'};
+  const e=cust.el*D2R,z=cust.az*D2R,a=[Math.cos(e)*Math.cos(z),Math.cos(e)*Math.sin(z),-Math.sin(e)];
+  return{a,name:'custom axis',order:1,b1:perp(a),sign:'Picks the one along nose × axis.'};
+}
+const rawV=(n,ai)=>ai.order>0?cross(n,ai.a):cross(ai.a,n);
+
+function noseAt(time){
+  const ai=axisInfo(),a=ai.a;
+  const b1=nrm(add(ai.b1,scl(a,-dot(ai.b1,a)))),b2=cross(a,b1);
+  if(mode==='manual'){const e=P.el*D2R,h=P.hd*D2R;return[Math.cos(e)*Math.cos(h),Math.cos(e)*Math.sin(h),-Math.sin(e)];}
+  if(mode==='circle'){
+    const o=P.off*D2R,c=add(scl(a,Math.cos(o)),scl(b1,Math.sin(o)));
+    let e1=add(a,scl(c,-dot(a,c)));e1=len(e1)>1e-6?nrm(e1):b1;
+    const e2=cross(c,e1),r=P.rad*D2R,w=2*Math.PI*time/P.cper;
+    return nrm(add(scl(c,Math.cos(r)),scl(add(scl(e1,Math.cos(w)),scl(e2,Math.sin(w))),Math.sin(r))));
+  }
+  const m=P.miss*D2R,p0=add(scl(a,Math.cos(m)),scl(b1,Math.sin(m)));
+  const s=P.sweep*D2R*Math.sin(2*Math.PI*time/P.pper);
+  return nrm(add(scl(p0,Math.cos(s)),scl(b2,Math.sin(s))));
+}
+
+// ---------- scene ----------
+const view=$('bview');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+view.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--view').trim()||'#10151b');
+const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
+const grid=new THREE.GridHelper(14,14,0x3a4552,0x252d36);grid.position.y=-3.8;scene.add(grid);
+
+function label(text,color,s){
+  const c=document.createElement('canvas');c.width=256;c.height=96;const g=c.getContext('2d');
+  g.font='600 50px system-ui,sans-serif';g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';g.fillText(text,128,48);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true}));
+  sp.scale.set(1.2*s,0.45*s,1);sp.renderOrder=10;return sp;
+}
+[[NORTH,'N'],[EAST,'E'],[UP,'Up']].forEach(([v,n])=>{
+  const g=new THREE.BufferGeometry().setFromPoints([T(scl(v,-4.6)),T(scl(v,4.6))]);
+  const l=new THREE.Line(g,new THREE.LineDashedMaterial({color:0x6b7480,dashSize:0.2,gapSize:0.15,transparent:true,opacity:0.6}));l.computeLineDistances();scene.add(l);
+  const lb=label(n,'#9aa4b0',0.7);lb.position.copy(T(scl(v,5.0)));scene.add(lb);
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(R,24,16),new THREE.MeshBasicMaterial({color:0x5b6672,wireframe:true,transparent:true,opacity:0.10})));
+const sphereFill=new THREE.Mesh(new THREE.SphereGeometry(R,48,32),new THREE.MeshBasicMaterial({color:0xf5a524,transparent:true,opacity:0.14,depthWrite:false}));scene.add(sphereFill);
+
+const noseArrow=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),R+0.6,0xef4444,0.4,0.22);scene.add(noseArrow);
+const noseLbl=label('nose','#ef4444',0.7);scene.add(noseLbl);
+const axisArrow=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),R+1.0,0xa855f7,0.4,0.22);scene.add(axisArrow);
+const axisNeg=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineDashedMaterial({color:0xa855f7,dashSize:0.2,gapSize:0.12}));scene.add(axisNeg);
+const axisLbl=label('axis','#a855f7',0.7);scene.add(axisLbl);
+
+function makeDisk(color){
+  const d=new THREE.Mesh(new THREE.CircleGeometry(R,96),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.11,side:THREE.DoubleSide,depthWrite:false}));
+  const ring=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(new Array(128).fill(0).map(()=>new THREE.Vector3())),new THREE.LineBasicMaterial({color,transparent:true,opacity:0.8}));
+  scene.add(d);scene.add(ring);return{d,ring};
+}
+const disk1=makeDisk(0xef4444),disk2=makeDisk(0xa855f7);
+function placeDisk(k,m){
+  k.d.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),T(m).normalize());
+  const e1=perp(m),e2=cross(m,e1),pos=k.ring.geometry.attributes.position;
+  for(let i=0;i<128;i++){const a=2*Math.PI*i/128,p=T(scl(add(scl(e1,Math.cos(a)),scl(e2,Math.sin(a))),R));pos.setXYZ(i,p.x,p.y,p.z);}
+  pos.needsUpdate=true;
+}
+const FAN=36;
+const fan=new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position',new THREE.BufferAttribute(new Float32Array(FAN*6),3)),new THREE.LineBasicMaterial({color:0xf5a524,transparent:true,opacity:0.55}));scene.add(fan);
+function placeFan(m){
+  const e1=perp(m),e2=cross(m,e1),pos=fan.geometry.attributes.position;
+  for(let i=0;i<FAN;i++){const a=2*Math.PI*i/FAN,p=T(scl(add(scl(e1,Math.cos(a)),scl(e2,Math.sin(a))),R));pos.setXYZ(2*i,0,0,0);pos.setXYZ(2*i+1,p.x,p.y,p.z);}
+  pos.needsUpdate=true;
+}
+const candA=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),R,0xf5a524,0.4,0.22);
+const candB=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),R,0xf5a524,0.4,0.22);
+scene.add(candA);scene.add(candB);
+[candA,candB].forEach(c=>{c.line.material.linewidth=2;});
+const ambLbl=label('zero-roll fin','#f5a524',0.7);scene.add(ambLbl);
+const poleMat=new THREE.MeshBasicMaterial({color:0xef4444});
+const poleA=new THREE.Mesh(new THREE.SphereGeometry(0.09,16,12),poleMat),poleB=poleA.clone();scene.add(poleA);scene.add(poleB);
+
+const TRN=240;
+function makeTrail(color){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(TRN*3),3));const l=new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:true,opacity:0.7}));scene.add(l);return{l,pts:[]};}
+const trN=makeTrail(0xef4444),trA=makeTrail(0xf5a524);
+function pushTrail(tr,v){tr.pts.push(v);if(tr.pts.length>TRN)tr.pts.shift();const p=tr.l.geometry.attributes.position.array;tr.pts.forEach((q,i)=>{p[i*3]=q.x;p[i*3+1]=q.y;p[i*3+2]=q.z;});tr.l.geometry.setDrawRange(0,tr.pts.length);tr.l.geometry.attributes.position.needsUpdate=true;}
+function clearTrails(){trN.pts=[];trA.pts=[];trN.l.geometry.setDrawRange(0,0);trA.l.geometry.setDrawRange(0,0);}
+
+// field
+const FN=420;
+const fGeo=new THREE.BufferGeometry();
+fGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(FN*6),3));
+fGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(FN*6),3));
+const field=new THREE.LineSegments(fGeo,new THREE.LineBasicMaterial({vertexColors:true}));scene.add(field);
+function buildField(){
+  const ai=axisInfo(),pos=fGeo.attributes.position,col=fGeo.attributes.color;let k=0;
+  const amb=new THREE.Color(0xf5a524),red=new THREE.Color(0xef4444),cc=new THREE.Color();
+  for(let i=0;i<FN;i++){
+    const y=1-2*(i+0.5)/FN,r=Math.sqrt(1-y*y),ph=i*2.399963;
+    const p=[r*Math.cos(ph),r*Math.sin(ph),y];
+    const v=rawV(p,ai),l=len(v);if(l<0.03)continue;
+    const u=scl(v,1/l),base=scl(p,R*1.003);
+    let s0,s1;
+    if(C[4]){s0=base;s1=add(base,scl(u,0.32));}else{s0=add(base,scl(u,-0.16));s1=add(base,scl(u,0.16));}
+    const A=T(s0),B=T(s1);
+    cc.copy(red).lerp(amb,Math.min(1,l/0.5));
+    pos.setXYZ(2*k,A.x,A.y,A.z);pos.setXYZ(2*k+1,B.x,B.y,B.z);
+    col.setXYZ(2*k,cc.r*0.6,cc.g*0.6,cc.b*0.6);col.setXYZ(2*k+1,cc.r,cc.g,cc.b);k++;
+  }
+  fGeo.setDrawRange(0,2*k);pos.needsUpdate=true;col.needsUpdate=true;
+}
+
+// camera orbit
+let az=0.8,el=0.35,dist=14.5;
+function placeCam(){camera.position.set(dist*Math.cos(el)*Math.sin(az),dist*Math.sin(el),dist*Math.cos(el)*Math.cos(az));camera.lookAt(0,0,0);}
+const ptrs=new Map();let pinch0=0;
+view.addEventListener('pointerdown',e=>{view.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);});
+view.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId);
+  if(ptrs.size===1){az-=(e.clientX-p[0])*0.008;el=Math.max(-1.4,Math.min(1.4,el+(e.clientY-p[1])*0.008));}
+  ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch0)dist=Math.max(5,Math.min(30,dist*pinch0/d));pinch0=d;}
+});
+const up=e=>{ptrs.delete(e.pointerId);pinch0=0;};
+view.addEventListener('pointerup',up);view.addEventListener('pointercancel',up);
+view.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(5,Math.min(30,dist*(1+e.deltaY*0.001)));},{passive:false});
+function resize(){const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(view);
+
+// ---------- UI ----------
+function seg(id,attr,cb){document.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.toggle('on',x===b));cb(b.dataset[attr]);});}
+seg('baxis','a',k=>{axisKey=k;$('bcust').hidden=k!=='custom';clearTrails();buildField();});
+seg('bmode','m',m=>{
+  if(m==='manual'){const n=noseAt(t);P.el=Math.asin(-n[2])*R2D;P.hd=Math.atan2(n[1],n[0])*R2D;
+    $('bel').value=P.el;$('bhd').value=P.hd;$('obel').textContent=P.el.toFixed(1)+'°';$('obhd').textContent=P.hd.toFixed(1)+'°';}
+  mode=m;['manual','circle','pass'].forEach(x=>$('m-'+x).hidden=x!==m);clearTrails();
+});
+function slider(id,key,unit,obj){$(id).addEventListener('input',()=>{(obj||P)[key]=+$(id).value;$('o'+id.replace(/^b/,'b')).textContent=$(id).value+unit;});}
+[['bel','el','°'],['bhd','hd','°'],['boff','off','°'],['brad','rad','°'],['bcper','cper',' s'],['bmiss','miss','°'],['bsweep','sweep','°'],['bpper','pper',' s']]
+  .forEach(([id,k,u])=>$(id).addEventListener('input',()=>{P[k]=+$(id).value;$('o'+id).textContent=$(id).value+u;}));
+$('bcaz').addEventListener('input',()=>{cust.az=+$('bcaz').value;$('ocaz').textContent=cust.az+'°';buildField();});
+$('bcel').addEventListener('input',()=>{cust.el=+$('bcel').value;$('ocel').textContent=cust.el+'°';buildField();});
+[1,2,3,4].forEach(k=>$('c'+k).addEventListener('change',()=>{C[k]=$('c'+k).checked;syncConds();}));
+function syncConds(){
+  const ok=C[1]&&C[2];$('c4').disabled=!ok;$('c4w').classList.toggle('dis',!ok);
+  buildField();
+}
+document.querySelectorAll('#bstages button').forEach(b=>b.onclick=()=>{
+  const s=+b.dataset.s;const set=[[0,0,0,0],[1,0,0,0],[1,1,0,0],[1,1,1,0],[1,1,1,1]][s];
+  [1,2,3,4].forEach(k=>{C[k]=!!set[k-1];$('c'+k).checked=C[k];});syncConds();
+});
+$('bfield').addEventListener('change',()=>{showField=$('bfield').checked;});
+$('btrail').addEventListener('change',()=>{showTrails=$('btrail').checked;if(!showTrails)clearTrails();});
+$('bplay').onclick=()=>{playing=!playing;$('bplay').textContent=playing?'Pause':'Play';};
+
+// ---------- per-frame ----------
+let prevN=null,prevU=null,nr=0,ar=0;const hist=[];let lastH=-1;
+function fmtDir(u){return `${((Math.atan2(u[1],u[0])*R2D+360)%360).toFixed(0)}°, ${(Math.asin(-u[2])*R2D).toFixed(1)}°`;}
+function update(dt){
+  if(playing&&mode!=='manual')t+=dt;
+  const ai=axisInfo(),a=ai.a,n=noseAt(t);
+  const v=rawV(n,ai),vl=len(v),deg=vl<0.01,u=vl>1e-9?scl(v,1/vl):perp(n);
+  const angNA=ang(n,a)*R2D;
+
+  // rates
+  if(prevN&&dt>0){
+    const nn=ang(n,prevN)*R2D/dt,aa=deg?0:ang(u,prevU||u)*R2D/dt;
+    nr=nr*0.8+nn*0.2;ar=ar*0.8+aa*0.2;
+  }
+  prevN=n;prevU=u;
+
+  // arrows
+  noseArrow.setDirection(T(n).normalize());noseLbl.position.copy(T(scl(n,R+1.0)));
+  axisArrow.setDirection(T(a).normalize());axisNeg.geometry.setFromPoints([new THREE.Vector3(),T(scl(a,-(R+1.0)))]);axisNeg.computeLineDistances();
+  axisLbl.position.copy(T(scl(a,R+1.4)));axisLbl.material.map.needsUpdate=false;
+  poleA.position.copy(T(scl(a,R)));poleB.position.copy(T(scl(a,-R)));
+
+  // condition visuals
+  sphereFill.visible=!C[1]&&!C[2];
+  disk1.d.visible=disk1.ring.visible=C[1];disk2.d.visible=disk2.ring.visible=C[2];
+  if(C[1])placeDisk(disk1,n);if(C[2])placeDisk(disk2,a);
+  let fanOn=false,count='',note='';
+  const both=C[1]&&C[2];
+  if(C[1]&&!C[2]){placeFan(n);fanOn=true;}
+  else if(C[2]&&!C[1]){placeFan(a);fanOn=true;}
+  else if(both&&deg){placeFan(n);fanOn=true;}
+  fan.visible=fanOn;
+  fan.material.color.set(both&&deg?0xef4444:0xf5a524);
+  const showC=both&&!deg;
+  candA.visible=candB.visible=ambLbl.visible=showC;
+  if(showC){
+    const L=C[3]?R:Math.max(vl*R,0.02),hl=Math.min(0.4,L*0.45),hw=Math.min(0.22,L*0.3);
+    candA.setDirection(T(u).normalize());candA.setLength(L,hl,hw);
+    candB.setDirection(T(scl(u,-1)).normalize());candB.setLength(L,hl,hw);
+    const dim=C[4];candB.setColor(new THREE.Color(dim?0x4b5563:0xf5a524));
+    ambLbl.position.copy(T(scl(u,L+0.5)));
+  }
+  // field + poles
+  field.visible=showField&&both;poleA.visible=poleB.visible=both;
+  // trails
+  if(showTrails&&playing&&mode!=='manual'){pushTrail(trN,T(scl(n,R)));if(showC)pushTrail(trA,T(scl(u,R)));}
+  trN.l.visible=trA.l.visible=showTrails;
+
+  // count + note
+  const ax=ai.name;
+  if(!C[1]&&!C[2]){count='∞ (whole sphere)';note='No conditions: every direction in space counts, including ones along the nose. That is the shaded sphere.';}
+  else if(C[1]&&!C[2]){count='∞ (a full circle)';note='Condition 1 only: any direction at 90° to the nose is a valid fin direction. That is the full circle inside the red disk. The body on its own does not prefer any roll angle.';}
+  else if(C[2]&&!C[1]){count='∞ (a full circle)';note=`Condition 2 only: any direction at 90° to the ${ax} qualifies, whatever the nose does. Many of these could never be a fin direction.`;}
+  else if(deg){count='undefined';note=`The nose is ${angNA<90?angNA.toFixed(2):(180-angNA).toFixed(2)}° from the ${ax}, so the red and purple disks are the same disk. Every direction on that circle meets both conditions, and nothing picks one out. This is the singularity.`;}
+  else{
+    count=C[4]?'1':'2 (opposite)';
+    note=`Conditions 1 and 2: the red and purple disks cross along one line, so 2 opposite candidates remain. They are at 90° to both the nose and the ${ax}.`;
+    if(!C[3])note+=` Condition 3 is off, so the arrows show the raw cross product nose × axis. Its length is sin(${angNA.toFixed(1)}°) = ${vl.toFixed(3)}. Normalizing divides by this, which magnifies sideways nose motion ${(1/vl).toFixed(1)}×.`;
+    if(C[4])note+=' Condition 4 keeps the bright one. If the nose passes directly over the axis, the kept side switches and the amber line jumps 180°.';
+  }
+  $('bcount').textContent=count;$('bnote').textContent=note;
+  $('c4t').textContent=ai.sign;
+
+  // readouts
+  $('r-ang').textContent=angNA.toFixed(1)+'°';
+  $('r-len').textContent=vl.toFixed(3);
+  $('r-mag').textContent=deg?'∞':(1/vl).toFixed(2)+'×';
+  $('r-nr').textContent=(mode==='manual'&&!ptrs.size?nr:nr).toFixed(1)+' °/s';
+  $('r-ar').textContent=deg?'undefined':ar.toFixed(1)+' °/s';
+  $('r-ratio').textContent=(nr>0.5&&!deg)?(ar/nr).toFixed(2)+'×':'—';
+  $('r-dir').textContent=deg?'undefined':fmtDir(u);
+  const b=$('bbanner'),off=Math.min(angNA,180-angNA);
+  if(both&&deg){b.style.display='block';b.textContent=`Nose lined up with the ${ax}: conditions 1 and 2 give the same circle, so there is no single amber line.`;}
+  else if(both&&off<10){b.style.display='block';b.textContent=`Nose ${off.toFixed(1)}° from the ${ax}: sideways nose motion turns the amber line ${(1/vl).toFixed(1)}× faster.`;}
+  else b.style.display='none';
+
+  // plot history
+  if(t-lastH>=1/30||t<lastH){lastH=t;hist.push({t,lim:deg?99:1/vl,m:(nr>0.5&&!deg)?ar/nr:null});while(hist.length&&hist[0].t<t-12)hist.shift();if(hist.length&&hist[hist.length-1].t<hist[0].t)hist.length=0;}
+}
+
+const pc=$('bplot');
+function drawPlot(){
+  const dpr=Math.min(window.devicePixelRatio,2),W=pc.clientWidth,H=pc.clientHeight;if(!W)return;
+  if(pc.width!==W*dpr||pc.height!==H*dpr){pc.width=W*dpr;pc.height=H*dpr;}
+  const g=pc.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  const cs=getComputedStyle(document.documentElement),V=n=>cs.getPropertyValue(n).trim();
+  g.fillStyle=V('--plotbg');g.fillRect(0,0,W,H);
+  const L=30,Rm=8,Tp=8,B=20,pw=W-L-Rm,ph=H-Tp-B,YM=20;
+  const y=v=>Tp+ph*(1-Math.min(v,YM)/YM);
+  const t1=Math.max(t,12),t0=t1-12,x=s=>L+pw*(s-t0)/12;
+  g.strokeStyle=V('--plotgrid');g.fillStyle=V('--muted');g.font='11px system-ui';g.textAlign='right';g.textBaseline='middle';g.lineWidth=1;
+  [0,5,10,15,20].forEach(v=>{g.beginPath();g.moveTo(L,y(v));g.lineTo(W-Rm,y(v));g.stroke();g.fillText(v+'×',L-4,y(v));});
+  g.textAlign='center';g.textBaseline='top';for(let s=Math.ceil(t0/2)*2;s<=t1;s+=2)g.fillText(s.toFixed(0)+'s',x(s),H-B+4);
+  g.setLineDash([5,4]);g.strokeStyle='#a855f7';g.lineWidth=1.5;g.beginPath();hist.forEach((h,i)=>i?g.lineTo(x(h.t),y(h.lim)):g.moveTo(x(h.t),y(h.lim)));g.stroke();g.setLineDash([]);
+  g.strokeStyle=V('--world');g.lineWidth=2.2;g.beginPath();let pen=false;
+  hist.forEach(h=>{if(h.m===null){pen=false;return;}if(pen)g.lineTo(x(h.t),y(h.m));else{g.moveTo(x(h.t),y(h.m));pen=true;}});g.stroke();
+}
+
+syncConds();
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!$('tab2').hidden){
+    if(!renderer.domElement.width||renderer.domElement.width<10)resize();
+    update(dt);placeCam();drawPlot();renderer.render(scene,camera);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
